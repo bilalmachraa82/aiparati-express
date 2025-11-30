@@ -1,38 +1,47 @@
-# AutoFund AI - Dockerfile
-FROM python:3.11-slim
+FROM node:18-alpine AS base
 
-# Set working directory
+# Instalar dependências de build
+RUN apk add --no-cache libc6-compat
+
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# Copiar package files
+COPY package.json package-lock.json* ./
 
-# Copy requirements
-COPY requirements_web.txt .
+# Instalar dependências
+RUN npm ci
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements_web.txt
-
-# Copy application code
+# Build stage
+FROM base AS builder
+COPY --from=base /app/node_modules ./node_modules
 COPY . .
 
-# Create necessary directories
-RUN mkdir -p uploads outputs app/static
+# Construir aplicação
+RUN npm run build
 
-# Set environment variables
-ENV PYTHONPATH=/app
-ENV PYTHONUNBUFFERED=1
-ENV ENVIRONMENT=production
+# Production stage
+FROM base AS runner
+WORKDIR /app
 
-# Expose port
-EXPOSE 8000
+ENV NODE_ENV production
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+# Criar usuário non-root
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
 
-# Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Copiar build
+COPY --from=builder /app/public ./public
+
+# Automaticamente aproveita output de tracing
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 3000
+
+ENV PORT 3000
+ENV HOSTNAME "0.0.0.0"
+
+# Iniciar aplicação
+CMD ["node", "server.js"]

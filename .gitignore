@@ -49,6 +49,9 @@ uploads/
 *.log
 logs/
 
+# API (Python)
+api/
+
 # Node.js
 node_modules/
 npm-debug.log*
