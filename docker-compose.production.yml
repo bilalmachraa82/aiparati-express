@@ -1,0 +1,274 @@
+# AutoFund AI - Production Docker Compose
+# Complete development environment with Redis, PostgreSQL, and monitoring
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: autofund_postgres
+    environment:
+      POSTGRES_DB: autofund_ai
+      POSTGRES_USER: autofund
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-autofund123}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autofund -d autofund_ai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - autofund_network
+
+  # Redis Cache & Task Queue
+  redis:
+    image: redis:7-alpine
+    container_name: autofund_redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - autofund_network
+
+  # Redis Commander (Redis GUI)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: autofund_redis_gui
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - autofund_network
+
+  # FastAPI Backend
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    container_name: autofund_api
+    environment:
+      # Database
+      DATABASE_URL: postgresql://autofund:${POSTGRES_PASSWORD:-autofund123}@postgres:5432/autofund_ai
+      DATABASE_ECHO: "false"
+      DATABASE_POOL_SIZE: "10"
+      DATABASE_MAX_OVERFLOW: "20"
+
+      # Redis
+      REDIS_URL: redis://redis:6379/0
+      REDIS_MAX_CONNECTIONS: "20"
+
+      # API Configuration
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      DEBUG: "false"
+      ENVIRONMENT: production
+
+      # Security
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-super-secret-key-change-in-production}
+      ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      REFRESH_TOKEN_EXPIRE_DAYS: "7"
+
+      # File Storage
+      UPLOAD_DIR: /app/uploads
+      OUTPUT_DIR: /app/outputs
+      MAX_FILE_SIZE: 10485760  # 10MB
+
+      # AI Models
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      MODEL_EXTRACTION: claude-3-5-sonnet-20241022
+      MODEL_ANALYSIS: claude-opus-4-5-20251101
+
+      # Processing
+      MOCK_MODE: "false"
+      PROCESSING_TIMEOUT: "600"
+      MAX_CONCURRENT_TASKS: "5"
+
+      # Rate Limiting
+      ANONYMOUS_RATE_LIMIT: "10"
+      USER_RATE_LIMIT: "30"
+      PREMIUM_RATE_LIMIT: "100"
+      RATE_LIMIT_WINDOW: "3600"
+
+      # Quotas
+      FREE_TIER_QUOTA: "5"
+      PREMIUM_TIER_QUOTA: "100"
+      ENTERPRISE_TIER_QUOTA: "1000"
+
+      # CORS
+      CORS_ORIGINS: '["http://localhost:3000", "http://localhost:8000", "https://your-domain.com"]'
+
+      # Logging
+      LOG_LEVEL: INFO
+      LOG_FILE: /app/logs/autofund_ai.log
+
+      # Monitoring
+      PROMETHEUS_ENABLED: "true"
+      PROMETHEUS_PORT: "9090"
+
+    volumes:
+      - ./uploads:/app/uploads
+      - ./outputs:/app/outputs
+      - ./logs:/app/logs
+      - ./IES\ -\ 2023.pdf:/app/test_files/IES\ -\ 2023.pdf:ro
+      - ./template_iapmei.xlsx:/app/templates/template_iapmei.xlsx:ro
+    ports:
+      - "8000:8000"
+      - "9090:9090"  # Prometheus metrics
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/system/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - autofund_network
+
+  # Celery Worker (Background Tasks)
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    container_name: autofund_worker
+    command: celery -A api.celery_app worker --loglevel=info --concurrency=2
+    environment:
+      # Same environment as API but without web server
+      DATABASE_URL: postgresql://autofund:${POSTGRES_PASSWORD:-autofund123}@postgres:5432/autofund_ai
+      REDIS_URL: redis://redis:6379/0
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      MOCK_MODE: "false"
+      LOG_LEVEL: INFO
+    volumes:
+      - ./uploads:/app/uploads
+      - ./outputs:/app/outputs
+      - ./logs:/app/logs
+      - ./IES\ -\ 2023.pdf:/app/test_files/IES\ -\ 2023.pdf:ro
+      - ./template_iapmei.xlsx:/app/templates/template_iapmei.xlsx:ro
+    depends_on:
+      - postgres
+      - redis
+      - api
+    restart: unless-stopped
+    networks:
+      - autofund_network
+
+  # Flower (Celery Monitoring)
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    container_name: autofund_flower
+    command: celery -A api.celery_app flower --port=5555
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+      - worker
+    restart: unless-stopped
+    networks:
+      - autofund_network
+
+  # Prometheus (Metrics Collection)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: autofund_prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9091:9090"
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - autofund_network
+
+  # Grafana (Dashboards)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: autofund_grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin123}
+      GF_USERS_ALLOW_SIGN_UP: false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - autofund_network
+
+  # Nginx (Reverse Proxy & Load Balancer)
+  nginx:
+    image: nginx:alpine
+    container_name: autofund_nginx
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - autofund_network
+
+# Named Volumes
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+# Networks
+networks:
+  autofund_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

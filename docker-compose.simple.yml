@@ -24,7 +24,7 @@ services:
       retries: 3
 
   frontend:
-    build: ./aiparati-express
+    build: .
     container_name: aiparati-frontend
     ports:
       - "3000:3000"
@@ -32,7 +32,7 @@ services:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
       - NEXT_PUBLIC_STRIPE_PUBLIC_KEY=${STRIPE_PUBLIC_KEY:-pk_test_placeholder}
     volumes:
-      - ./aiparati-express:/app
+      - ./:/app
       - /app/node_modules
       - /app/.next
     restart: unless-stopped

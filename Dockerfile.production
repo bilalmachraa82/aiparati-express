@@ -1,0 +1,163 @@
+# AutoFund AI - Production Dockerfile
+# Multi-stage build for optimized production image
+
+# Build Stage
+FROM python:3.13-slim as builder
+
+# Set build arguments
+ARG BUILD_DATE
+ARG VERSION
+ARG VCS_REF
+
+# Set labels
+LABEL maintainer="AutoFund AI <support@autofund.ai>" \
+      org.label-schema.build-date=$BUILD_DATE \
+      org.label-schema.name="AutoFund AI API" \
+      org.label-schema.description="API automatizada para candidaturas Portugal 2030" \
+      org.label-schema.url="https://autofund.ai" \
+      org.label-schema.vcs-ref=$VCS_REF \
+      org.label-schema.vcs-url="https://github.com/your-org/autofund-ai" \
+      org.label-schema.vendor="AutoFund AI" \
+      org.label-schema.version=$VERSION \
+      org.label-schema.schema-version="1.0"
+
+# Set environment variables for build
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    git \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Set work directory
+WORKDIR /app
+
+# Copy requirements first for better layer caching
+COPY requirements_production.txt .
+
+# Install Python dependencies
+RUN pip install --upgrade pip && \
+    pip install -r requirements_production.txt
+
+# Production Stage
+FROM python:3.13-slim as production
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/home/appuser/.local/bin:$PATH"
+
+# Install runtime system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy app user from builder
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Create app directories
+RUN mkdir -p /app/uploads /app/outputs /app/logs /app/templates /app/test_files && \
+    chown -R appuser:appuser /app
+
+# Copy Python packages from builder stage
+COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Set work directory
+WORKDIR /app
+
+# Copy application code
+COPY --chown=appuser:appuser api/ ./api/
+COPY --chown=appuser:appuser autofund_ai_poc_v3.py .
+COPY --chown=appuser:appuser *.py .
+COPY --chown=appuser:appuser *.xlsx ./templates/
+COPY --chown=appuser:appuser *.pdf ./test_files/
+
+# Create necessary directories with correct permissions
+RUN mkdir -p /app/uploads /app/outputs /app/logs && \
+    chmod 755 /app/uploads /app/outputs /app/logs && \
+    chown -R appuser:appuser /app
+
+# Create entrypoint script
+RUN cat > /app/entrypoint.sh << 'EOF'
+#!/bin/bash
+set -e
+
+# Function to wait for service
+wait_for_service() {
+    local host=$1
+    local port=$2
+    local service=$3
+
+    echo "Waiting for $service to be ready..."
+    while ! nc -z $host $port; do
+        echo "Sleeping 1 second..."
+        sleep 1
+    done
+    echo "$service is ready!"
+}
+
+# Install netcat if not present
+if ! command -v nc &> /dev/null; then
+    apt-get update && apt-get install -y netcat-openbsd && rm -rf /var/lib/apt/lists/*
+fi
+
+# Wait for database if configured
+if [ ! -z "$DATABASE_URL" ]; then
+    # Extract host and port from DATABASE_URL
+    if [[ $DATABASE_URL == postgresql://* ]]; then
+        DB_HOST=$(echo $DATABASE_URL | sed -n 's/.*@\([^:]*\):.*/\1/p')
+        DB_PORT=$(echo $DATABASE_URL | sed -n 's/.*:\([0-9]*\)\/.*/\1/p')
+        wait_for_service ${DB_HOST:-postgres} ${DB_PORT:-5432} "PostgreSQL"
+    fi
+fi
+
+# Wait for Redis if configured
+if [ ! -z "$REDIS_URL" ]; then
+    # Extract host and port from REDIS_URL
+    REDIS_HOST=$(echo $REDIS_URL | sed -n 's/.*:\/\/\([^:]*\):.*/\1/p')
+    REDIS_PORT=$(echo $REDIS_URL | sed -n 's/.*:\([0-9]*\)\/.*/\1/p')
+    wait_for_service ${REDIS_HOST:-redis} ${REDIS_PORT:-6379} "Redis"
+fi
+
+# Run database migrations if needed
+if [ "$1" = "api" ]; then
+    echo "Running database migrations..."
+    # Add migration commands here if using Alembic
+fi
+
+# Create log file
+touch /app/logs/autofund_ai.log
+chown appuser:appuser /app/logs/autofund_ai.log
+
+# Execute the command
+exec "$@"
+EOF
+
+RUN chmod +x /app/entrypoint.sh
+
+# Switch to app user
+USER appuser
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/api/system/health || exit 1
+
+# Expose port
+EXPOSE 8000 9090
+
+# Set entrypoint
+ENTRYPOINT ["/app/entrypoint.sh"]
+
+# Default command
+CMD ["python", "-m", "uvicorn", "api.main_production:app", "--host", "0.0.0.0", "--port", "8000"]

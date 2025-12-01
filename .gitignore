@@ -96,3 +96,5 @@ railway.toml
 # API Keys
 *.key
 api_keys.txt
+.vercel
+.env*.local

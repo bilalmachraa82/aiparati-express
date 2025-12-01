@@ -1,0 +1,304 @@
+# AutoFund AI - Local Development Environment
+# Use this for day-to-day development with hot reload and debugging
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: autofund_postgres_dev
+    environment:
+      POSTGRES_DB: autofund_ai_dev
+      POSTGRES_USER: autofund
+      POSTGRES_PASSWORD: dev123
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autofund -d autofund_ai_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - autofund_dev
+
+  # Redis Cache & Task Queue
+  redis:
+    image: redis:7-alpine
+    container_name: autofund_redis_dev
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_dev_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - autofund_dev
+
+  # FastAPI Backend (Development Mode)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: autofund_api_dev
+    environment:
+      # Database
+      DATABASE_URL: postgresql://autofund:dev123@postgres:5432/autofund_ai_dev
+      DATABASE_ECHO: "true"  # Show SQL queries in dev
+      DEBUG: "true"
+      ENVIRONMENT: development
+
+      # Redis
+      REDIS_URL: redis://redis:6379/0
+
+      # API Configuration
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      RELOAD: "true"
+
+      # Security (development values)
+      JWT_SECRET_KEY: dev-secret-key-not-for-production
+      ACCESS_TOKEN_EXPIRE_MINUTES: "1440"  # 1 day in dev
+
+      # File Storage
+      UPLOAD_DIR: /app/uploads
+      OUTPUT_DIR: /app/outputs
+      MAX_FILE_SIZE: 10485760  # 10MB
+
+      # AI Models
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      MODEL_EXTRACTION: claude-3-5-sonnet-20241022
+      MODEL_ANALYSIS: claude-opus-4-5-20251101
+
+      # Processing
+      MOCK_MODE: "false"  # Set to "true" to test without API calls
+      PROCESSING_TIMEOUT: "600"
+
+      # CORS (allow all origins in dev)
+      CORS_ORIGINS: '["http://localhost:3000", "http://localhost:8000", "http://127.0.0.1:3000", "http://127.0.0.1:8000"]'
+
+      # Logging
+      LOG_LEVEL: DEBUG
+      LOG_FILE: /app/logs/autofund_ai.log
+
+    volumes:
+      # Mount source code for hot reload
+      - ./api:/app/api
+      - ./autofund_ai_poc_v3.py:/app/autofund_ai_poc_v3.py:ro
+      - ./.env:/app/.env:ro
+
+      # Shared directories
+      - ./uploads:/app/uploads
+      - ./outputs:/app/outputs
+      - ./logs:/app/logs
+
+      # Test files
+      - ./IES\ -\ 2023.pdf:/app/test_files/IES\ -\ 2023.pdf:ro
+      - ./template_iapmei.xlsx:/app/templates/template_iapmei.xlsx:ro
+
+    ports:
+      - "8000:8000"
+      - "9090:9090"  # Prometheus metrics (if enabled)
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    restart: unless-stopped
+    networks:
+      - autofund_dev
+
+  # Celery Worker (Background Tasks - Development Mode)
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: autofund_worker_dev
+    command: celery -A api.celery_app worker --loglevel=debug --concurrency=1
+    environment:
+      # Same as API but without web server
+      DATABASE_URL: postgresql://autofund:dev123@postgres:5432/autofund_ai_dev
+      REDIS_URL: redis://redis:6379/0
+      DEBUG: "true"
+      LOG_LEVEL: DEBUG
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      MOCK_MODE: "false"
+
+    volumes:
+      # Mount source code for hot reload
+      - ./api:/app/api
+      - ./.env:/app/.env:ro
+      - ./uploads:/app/uploads
+      - ./outputs:/app/outputs
+      - ./logs:/app/logs
+      - ./IES\ -\ 2023.pdf:/app/test_files/IES\ -\ 2023.pdf:ro
+      - ./template_iapmei.xlsx:/app/templates/template_iapmei.xlsx:ro
+
+    depends_on:
+      - postgres
+      - redis
+      - api
+
+    restart: unless-stopped
+    networks:
+      - autofund_dev
+
+  # Flower (Celery Monitoring - Development)
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: autofund_flower_dev
+    command: celery -A api.celery_app flower --port=5555 --basic_auth=admin:dev123
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+      - worker
+    restart: unless-stopped
+    networks:
+      - autofund_dev
+
+  # Redis Commander (Redis GUI - Development)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: autofund_redis_gui_dev
+    environment:
+      REDIS_HOSTS: local:redis:6379
+      HTTP_USER: admin
+      HTTP_PASSWORD: dev123
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - autofund_dev
+
+  # PgAdmin (PostgreSQL GUI - Development)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: autofund_pgadmin_dev
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@autofund.dev
+      PGADMIN_DEFAULT_PASSWORD: dev123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - autofund_dev
+
+  # MinIO (S3-compatible storage - Development)
+  minio:
+    image: minio/minio:latest
+    container_name: autofund_minio_dev
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"  # API
+      - "9001:9001"  # Console
+    restart: unless-stopped
+    networks:
+      - autofund_dev
+
+  # Prometheus (Metrics - Development)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: autofund_prometheus_dev
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_dev_data:/prometheus
+    ports:
+      - "9091:9090"
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - autofund_dev
+
+  # Grafana (Dashboards - Development)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: autofund_grafana_dev
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: dev123
+      GF_USERS_ALLOW_SIGN_UP: true
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - grafana_dev_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - autofund_dev
+
+  # Mailhog (SMTP testing - Development)
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: autofund_mailhog_dev
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    restart: unless-stopped
+    networks:
+      - autofund_dev
+
+# Named Volumes
+volumes:
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  minio_data:
+    driver: local
+  prometheus_dev_data:
+    driver: local
+  grafana_dev_data:
+    driver: local
+
+# Networks
+networks:
+  autofund_dev:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16

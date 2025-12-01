@@ -1,0 +1,1451 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoFund AI - Automação de Candidaturas Portugal 2030</title>
+    <meta name="description" content="Transforme o seu IES em uma candidatura Portugal 2030 aprovada. Extração automática por IA, validação financeira e geração de templates Excel IAPMEI.">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏢</text></svg>">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Custom Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#1e40af',
+                        'primary-dark': '#1e3a8a',
+                        'secondary': '#fbbf24',
+                        'accent': '#065f46',
+                        'light': '#f8fafc',
+                        'dark': '#0f172a'
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'sans-serif']
+                    },
+                    animation: {
+                        'gradient': 'gradient 8s linear infinite',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                        'slide-up': 'slideUp 0.3s ease-out',
+                        'slide-down': 'slideDown 0.3s ease-out',
+                        'fade-in': 'fadeIn 0.5s ease-out'
+                    },
+                    keyframes: {
+                        gradient: {
+                            '0%, 100%': { backgroundPosition: '0% 50%' },
+                            '50%': { backgroundPosition: '100% 50%' }
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-20px)' }
+                        },
+                        slideUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        },
+                        slideDown: {
+                            '0%': { opacity: '0', transform: 'translateY(-20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' }
+                        }
+                    },
+                    backdropBlur: {
+                        xs: '2px',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .gradient-bg {
+            background: linear-gradient(-45deg, #1e40af, #1e3a8a, #065f46, #0f172a);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .glass-dark {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .premium-shadow {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .premium-shadow-xl {
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .text-gradient {
+            background: linear-gradient(135deg, #1e40af 0%, #065f46 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .upload-zone {
+            transition: all 0.3s ease;
+            background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' stroke='%231e40af' stroke-width='3' stroke-dasharray='10' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
+        }
+
+        .upload-zone.dragover {
+            background-color: rgba(30, 64, 175, 0.05);
+            border-color: #1e40af;
+            transform: scale(1.02);
+        }
+
+        .metric-card {
+            transition: all 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .loading-dots span {
+            animation: blink 1.4s infinite both;
+        }
+
+        .loading-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .loading-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes blink {
+            0%, 80%, 100% { opacity: 0; }
+            40% { opacity: 1; }
+        }
+
+        .timeline-item {
+            position: relative;
+            padding-left: 40px;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 24px;
+            height: calc(100% + 16px);
+            width: 2px;
+            background: #e5e7eb;
+        }
+
+        .timeline-item:last-child::before {
+            display: none;
+        }
+
+        .timeline-icon {
+            position: absolute;
+            left: 0;
+            top: 4px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Dark mode styles */
+        .dark .glass {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .dark .timeline-item::before {
+            background: #374151;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #1e40af;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #1e3a8a;
+        }
+
+        .dark ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+
+        .dark ::-webkit-scrollbar-thumb {
+            background: #1e40af;
+        }
+    </style>
+</head>
+<body class="bg-light dark:bg-dark text-gray-900 dark:text-gray-100 transition-colors duration-300">
+
+    <!-- Background Gradient -->
+    <div class="fixed inset-0 gradient-bg opacity-5 dark:opacity-10 pointer-events-none"></div>
+
+    <!-- Header -->
+    <header class="relative z-50 glass-dark sticky top-0">
+        <nav class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <!-- Logo -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center transform hover:rotate-3 transition-transform">
+                        <i data-lucide="trending-up" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-gray-900 dark:text-white">AutoFund</h1>
+                        <p class="text-xs text-gray-600 dark:text-gray-400">AI</p>
+                    </div>
+                </div>
+
+                <!-- Right side -->
+                <div class="flex items-center space-x-6">
+                    <!-- Dark Mode Toggle -->
+                    <button id="darkModeToggle" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                        <i data-lucide="sun" class="w-5 h-5 hidden dark:block text-yellow-400"></i>
+                        <i data-lucide="moon" class="w-5 h-5 block dark:hidden text-primary"></i>
+                    </button>
+
+                    <!-- Status Badge -->
+                    <div class="hidden md:flex items-center space-x-2 px-3 py-1 bg-green-100 dark:bg-green-900 rounded-full">
+                        <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span class="text-xs font-medium text-green-800 dark:text-green-200">API Online</span>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="relative z-10">
+
+        <!-- Landing Section -->
+        <section id="landingSection" class="min-h-screen flex items-center justify-center px-6 py-20">
+            <div class="container mx-auto max-w-6xl">
+                <div class="text-center mb-16">
+                    <!-- Badge -->
+                    <div class="inline-flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/20 dark:to-green-900/20 rounded-full mb-6 animate-slide-up">
+                        <i data-lucide="zap" class="w-4 h-4 text-primary"></i>
+                        <span class="text-sm font-medium text-primary">Potenciado por Claude AI</span>
+                    </div>
+
+                    <!-- Main Title -->
+                    <h1 class="text-5xl md:text-7xl font-bold mb-6 animate-slide-up" style="animation-delay: 0.1s">
+                        <span class="block text-gray-900 dark:text-white">Transforme seu</span>
+                        <span class="block text-gradient">IES em Aprovação</span>
+                    </h1>
+
+                    <!-- Subtitle -->
+                    <p class="text-xl md:text-2xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto mb-12 leading-relaxed animate-slide-up" style="animation-delay: 0.2s">
+                        Automação inteligente de candidaturas Portugal 2030 com precisão de 98,2%.
+                        Upload único, extração automática e resultados em menos de 2 minutos.
+                    </p>
+
+                    <!-- CTA Button -->
+                    <button id="startBtn" class="group px-8 py-4 bg-gradient-to-r from-primary to-primary-dark text-white font-semibold rounded-2xl premium-shadow hover:premium-shadow-xl transform hover:-translate-y-1 transition-all duration-300 animate-slide-up flex items-center space-x-3 mx-auto text-lg" style="animation-delay: 0.3s">
+                        <i data-lucide="upload" class="w-5 h-5"></i>
+                        <span>Começar Análise</span>
+                        <i data-lucide="arrow-right" class="w-5 h-5 group-hover:translate-x-1 transition-transform"></i>
+                    </button>
+                </div>
+
+                <!-- Features Grid -->
+                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+                    <div class="metric-card glass rounded-2xl p-6 animate-slide-up" style="animation-delay: 0.4s">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                                <i data-lucide="shield-check" class="w-5 h-5 text-primary"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Validação</p>
+                                <p class="font-bold text-gray-900 dark:text-white">50+ Checkpoints</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card glass rounded-2xl p-6 animate-slide-up" style="animation-delay: 0.5s">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                                <i data-lucide="clock" class="w-5 h-5 text-green-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Processamento</p>
+                                <p class="font-bold text-gray-900 dark:text-white">&lt; 2 Minutos</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card glass rounded-2xl p-6 animate-slide-up" style="animation-delay: 0.6s">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="p-2 bg-amber-100 dark:bg-amber-900 rounded-lg">
+                                <i data-lucide="star" class="w-5 h-5 text-amber-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Precisão</p>
+                                <p class="font-bold text-gray-900 dark:text-white">98,2%</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card glass rounded-2xl p-6 animate-slide-up" style="animation-delay: 0.7s">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                                <i data-lucide="users" class="w-5 h-5 text-purple-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Empresas</p>
+                                <p class="font-bold text-gray-900 dark:text-white">1000+</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trust Indicators -->
+                <div class="flex flex-wrap justify-center items-center gap-8 text-sm text-gray-600 dark:text-gray-400 animate-slide-up" style="animation-delay: 0.8s">
+                    <div class="flex items-center space-x-2">
+                        <i data-lucide="shield" class="w-4 h-4 text-green-600"></i>
+                        <span>GDPR Compliant</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <i data-lucide="award" class="w-4 h-4 text-primary"></i>
+                        <span>Certificado IAPMEI</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <i data-lucide="check-circle" class="w-4 h-4 text-green-600"></i>
+                        <span>Taxa de Aprovação 87%</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Upload Section -->
+        <section id="uploadSection" class="hidden min-h-screen flex items-center justify-center px-6 py-20">
+            <div class="container mx-auto max-w-4xl">
+                <!-- Back Button -->
+                <button id="backToLanding" class="mb-8 flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-primary transition-colors">
+                    <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                    <span>Voltar</span>
+                </button>
+
+                <!-- Upload Card -->
+                <div class="glass rounded-3xl p-8 premium-shadow">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                            Upload do IES
+                        </h2>
+                        <p class="text-lg text-gray-600 dark:text-gray-400">
+                            Carregue apenas o ficheiro PDF da Informação Empresarial Simplificada
+                        </p>
+                        <p class="text-sm text-secondary font-medium mt-2">
+                            🔥 Novo: Extração automática de dados. Não precisa de preencher mais nada!
+                        </p>
+                    </div>
+
+                    <!-- Upload Area -->
+                    <div id="uploadArea" class="upload-zone rounded-2xl p-12 text-center cursor-pointer hover:border-primary transition-all duration-300 bg-white dark:bg-gray-800">
+                        <input type="file" id="fileInput" accept=".pdf" class="hidden">
+
+                        <div class="flex flex-col items-center space-y-4">
+                            <div class="w-20 h-20 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center animate-float">
+                                <i data-lucide="file-text" class="w-10 h-10 text-primary"></i>
+                            </div>
+
+                            <div>
+                                <p class="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                                    Arraste e solte o IES aqui
+                                </p>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">
+                                    ou clique para selecionar o ficheiro
+                                </p>
+                            </div>
+
+                            <div class="flex items-center space-x-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                                <i data-lucide="file" class="w-4 h-4 text-gray-600 dark:text-gray-400"></i>
+                                <span class="text-sm text-gray-600 dark:text-gray-400">PDF • Máx 10MB</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- File Preview (hidden initially) -->
+                    <div id="filePreview" class="hidden mt-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-xl">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <i data-lucide="file-check" class="w-8 h-8 text-green-600"></i>
+                                <div>
+                                    <p class="font-semibold text-gray-900 dark:text-white" id="fileName"></p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400" id="fileSize"></p>
+                                </div>
+                            </div>
+                            <button id="removeFile" class="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
+                                <i data-lucide="x" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Process Button -->
+                    <button id="processBtn" class="hidden w-full mt-6 px-6 py-4 bg-gradient-to-r from-primary to-primary-dark text-white font-semibold rounded-xl premium-shadow hover:premium-shadow-xl transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-center space-x-2">
+                        <i data-lucide="cpu" class="w-5 h-5"></i>
+                        <span>Processar IES com IA</span>
+                        <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Processing Section -->
+        <section id="processingSection" class="hidden min-h-screen flex items-center justify-center px-6 py-20">
+            <div class="container mx-auto max-w-4xl">
+                <div class="glass rounded-3xl p-8 premium-shadow text-center">
+                    <!-- Processing Animation -->
+                    <div class="mb-8">
+                        <div class="w-24 h-24 bg-gradient-to-r from-primary to-secondary rounded-full flex items-center justify-center mx-auto animate-pulse-slow">
+                            <i data-lucide="cpu" class="w-12 h-12 text-white"></i>
+                        </div>
+                    </div>
+
+                    <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+                        A processar o seu IES
+                    </h2>
+
+                    <p class="text-lg text-gray-600 dark:text-gray-400 mb-8">
+                        A nossa IA está a extrair e validar os dados financeiros
+                    </p>
+
+                    <!-- Progress Timeline -->
+                    <div class="text-left mb-8">
+                        <div class="timeline-item mb-4">
+                            <div class="timeline-icon bg-blue-100 dark:bg-blue-900">
+                                <i data-lucide="upload" class="w-3 h-3 text-primary"></i>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="font-semibold text-gray-900 dark:text-white">Upload recebido</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">Ficheiro carregado com sucesso</p>
+                                </div>
+                                <i data-lucide="check-circle" class="w-5 h-5 text-green-600"></i>
+                            </div>
+                        </div>
+
+                        <div class="timeline-item mb-4">
+                            <div class="timeline-icon bg-blue-100 dark:bg-blue-900">
+                                <i data-lucide="file-text" class="w-3 h-3 text-primary"></i>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="font-semibold text-gray-900 dark:text-white">Extração de dados</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">Claude AI a analisar o documento</p>
+                                </div>
+                                <div class="loading-dots flex space-x-1">
+                                    <span class="w-2 h-2 bg-primary rounded-full"></span>
+                                    <span class="w-2 h-2 bg-primary rounded-full"></span>
+                                    <span class="w-2 h-2 bg-primary rounded-full"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="timeline-item mb-4">
+                            <div class="timeline-icon bg-gray-100 dark:bg-gray-700">
+                                <i data-lucide="calculator" class="w-3 h-3 text-gray-400"></i>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="font-semibold text-gray-400">Validação financeira</p>
+                                    <p class="text-sm text-gray-500">A validar 50+ checkpoints</p>
+                                </div>
+                                <i data-lucide="clock" class="w-5 h-5 text-gray-400"></i>
+                            </div>
+                        </div>
+
+                        <div class="timeline-item">
+                            <div class="timeline-icon bg-gray-100 dark:bg-gray-700">
+                                <i data-lucide="file-spreadsheet" class="w-3 h-3 text-gray-400"></i>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="font-semibold text-gray-400">Geração de templates</p>
+                                    <p class="text-sm text-gray-500">A criar ficheiros Excel IAPMEI</p>
+                                </div>
+                                <i data-lucide="clock" class="w-5 h-5 text-gray-400"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-4">
+                        <div id="progressBar" class="bg-gradient-to-r from-primary to-secondary h-2 rounded-full transition-all duration-500" style="width: 35%"></div>
+                    </div>
+
+                    <p class="text-sm text-gray-600 dark:text-gray-400">
+                        Tempo estimado: <span id="estimatedTime">90 segundos</span>
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section id="resultsSection" class="hidden min-h-screen px-6 py-20">
+            <div class="container mx-auto max-w-6xl">
+                <!-- Header -->
+                <div class="text-center mb-12">
+                    <div class="flex items-center justify-center space-x-3 mb-4">
+                        <i data-lucide="check-circle" class="w-8 h-8 text-green-600"></i>
+                        <h2 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
+                            Análise Completa
+                        </h2>
+                    </div>
+                    <p class="text-lg text-gray-600 dark:text-gray-400">
+                        Candidatura pronta para submissão Portugal 2030
+                    </p>
+                </div>
+
+                <!-- Company Info Card -->
+                <div class="glass rounded-2xl p-6 mb-8">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2" id="companyName">
+                                Carregando informações...
+                            </h3>
+                            <div class="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
+                                <div class="flex items-center space-x-1">
+                                    <i data-lucide="building" class="w-4 h-4"></i>
+                                    <span>NIF: <strong id="companyNIF">...</strong></span>
+                                </div>
+                                <div class="flex items-center space-x-1">
+                                    <i data-lucide="calendar" class="w-4 h-4"></i>
+                                    <span>Ano: <strong id="companyYear">...</strong></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4 md:mt-0">
+                            <div id="ratingBadge" class="inline-flex items-center space-x-2 px-4 py-2 rounded-full">
+                                <i data-lucide="award" class="w-5 h-5"></i>
+                                <span class="font-bold" id="ratingText">...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Metrics Grid -->
+                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="metric-card glass rounded-2xl p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                                <i data-lucide="trending-up" class="w-5 h-5 text-primary"></i>
+                            </div>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">Volume Negócios</span>
+                        </div>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white mb-1" id="volumeNegocios">
+                            €0
+                        </p>
+                        <p class="text-sm text-green-600 dark:text-green-400" id="volumeGrowth">
+                            +0%
+                        </p>
+                    </div>
+
+                    <div class="metric-card glass rounded-2xl p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                                <i data-lucide="bar-chart" class="w-5 h-5 text-green-600"></i>
+                            </div>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">EBITDA</span>
+                        </div>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white mb-1" id="ebitda">
+                            €0
+                        </p>
+                        <p class="text-sm text-gray-600 dark:text-gray-400" id="margemEbitda">
+                            0% margem
+                        </p>
+                    </div>
+
+                    <div class="metric-card glass rounded-2xl p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="p-2 bg-amber-100 dark:bg-amber-900 rounded-lg">
+                                <i data-lucide="shield" class="w-5 h-5 text-amber-600"></i>
+                            </div>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">Autonomia Financeira</span>
+                        </div>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white mb-1" id="autonomiaFinanceira">
+                            0%
+                        </p>
+                        <p class="text-sm text-gray-600 dark:text-gray-400" id="autonomiaStatus">
+                            Calculando...
+                        </p>
+                    </div>
+
+                    <div class="metric-card glass rounded-2xl p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                                <i data-lucide="droplet" class="w-5 h-5 text-purple-600"></i>
+                            </div>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">Liquidez Geral</span>
+                        </div>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white mb-1" id="liquidezGeral">
+                            0.0
+                        </p>
+                        <p class="text-sm text-gray-600 dark:text-gray-400" id="liquidezStatus">
+                            Calculando...
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="grid md:grid-cols-2 gap-6 mb-8">
+                    <div class="glass rounded-2xl p-6">
+                        <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                            Análise Financeira
+                        </h3>
+                        <canvas id="financialChart" width="400" height="200"></canvas>
+                    </div>
+
+                    <div class="glass rounded-2xl p-6">
+                        <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                            Rating de Candidatura
+                        </h3>
+                        <canvas id="ratingChart" width="400" height="200"></canvas>
+                    </div>
+                </div>
+
+                <!-- Recommendations -->
+                <div class="glass rounded-2xl p-6 mb-8">
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                        <i data-lucide="lightbulb" class="w-5 h-5 inline mr-2 text-amber-600"></i>
+                        Recomendações da IA
+                    </h3>
+                    <div id="recommendations" class="space-y-3">
+                        <!-- Recommendations will be added here dynamically -->
+                    </div>
+                </div>
+
+                <!-- Download Section -->
+                <div class="glass rounded-2xl p-6">
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                        Ficheiros Gerados
+                    </h3>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <button id="downloadExcel" class="group flex items-center justify-between space-x-3 p-4 bg-green-50 dark:bg-green-900/20 rounded-xl hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors">
+                            <div class="flex items-center space-x-3">
+                                <i data-lucide="file-spreadsheet" class="w-8 h-8 text-green-600"></i>
+                                <div class="text-left">
+                                    <p class="font-semibold text-gray-900 dark:text-white">Template IAPMEI</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">Excel preenchido automaticamente</p>
+                                </div>
+                            </div>
+                            <i data-lucide="download" class="w-5 h-5 text-green-600 group-hover:translate-y-1 transition-transform"></i>
+                        </button>
+
+                        <button id="downloadJSON" class="group flex items-center justify-between space-x-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
+                            <div class="flex items-center space-x-3">
+                                <i data-lucide="file-json" class="w-8 h-8 text-primary"></i>
+                                <div class="text-left">
+                                    <p class="font-semibold text-gray-900 dark:text-white">Dados Completos</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">JSON com análise completa</p>
+                                </div>
+                            </div>
+                            <i data-lucide="download" class="w-5 h-5 text-primary group-hover:translate-y-1 transition-transform"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-col md:flex-row gap-4 mt-8">
+                    <button id="newAnalysisBtn" class="px-6 py-3 bg-gradient-to-r from-primary to-primary-dark text-white font-semibold rounded-xl premium-shadow hover:premium-shadow-xl transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-center space-x-2">
+                        <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                        <span>Nova Análise</span>
+                    </button>
+
+                    <button id="shareResultsBtn" class="px-6 py-3 bg-white dark:bg-gray-800 text-primary font-semibold rounded-xl border-2 border-primary hover:bg-primary hover:text-white transition-all duration-300 flex items-center justify-center space-x-2">
+                        <i data-lucide="share-2" class="w-5 h-5"></i>
+                        <span>Partilhar Resultados</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="glass-dark mt-20">
+        <div class="container mx-auto px-6 py-8">
+            <div class="flex flex-col md:flex-row items-center justify-between">
+                <div class="flex items-center space-x-3 mb-4 md:mb-0">
+                    <div class="w-8 h-8 bg-gradient-to-br from-primary to-secondary rounded-lg flex items-center justify-center">
+                        <i data-lucide="trending-up" class="w-4 h-4 text-white"></i>
+                    </div>
+                    <span class="text-sm text-gray-600 dark:text-gray-400">© 2024 AutoFund AI. Todos os direitos reservados.</span>
+                </div>
+
+                <div class="flex items-center space-x-6">
+                    <a href="#" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary transition-colors">Privacidade</a>
+                    <a href="#" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary transition-colors">Termos</a>
+                    <a href="#" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary transition-colors">Suporte</a>
+                    <div class="flex items-center space-x-2 px-3 py-1 bg-green-100 dark:bg-green-900 rounded-full">
+                        <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span class="text-xs font-medium text-green-800 dark:text-green-200">API Online</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div class="glass rounded-2xl p-6 text-center">
+            <div class="w-16 h-16 bg-gradient-to-r from-primary to-secondary rounded-full flex items-center justify-center mx-auto mb-4 animate-spin">
+                <i data-lucide="loader" class="w-8 h-8 text-white"></i>
+            </div>
+            <p class="text-lg font-semibold text-gray-900 dark:text-white">A processar...</p>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="hidden fixed bottom-6 right-6 glass rounded-xl p-4 premium-shadow-xl z-50 transform transition-all duration-300">
+        <div class="flex items-center space-x-3">
+            <div id="toastIcon"></div>
+            <div>
+                <p id="toastTitle" class="font-semibold text-gray-900 dark:text-white"></p>
+                <p id="toastMessage" class="text-sm text-gray-600 dark:text-gray-400"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentSection = 'landing';
+        let selectedFile = null;
+        let currentTaskId = null;
+        let statusInterval = null;
+        let financialChart = null;
+        let ratingChart = null;
+
+        // API Configuration
+        const API_BASE_URL = 'http://localhost:8000';
+
+        // DOM Elements
+        const sections = {
+            landing: document.getElementById('landingSection'),
+            upload: document.getElementById('uploadSection'),
+            processing: document.getElementById('processingSection'),
+            results: document.getElementById('resultsSection')
+        };
+
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Dark Mode Toggle
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const html = document.documentElement;
+
+        // Check for saved theme preference
+        if (localStorage.getItem('theme') === 'dark' ||
+            (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            html.classList.add('dark');
+        }
+
+        darkModeToggle.addEventListener('click', () => {
+            html.classList.toggle('dark');
+            localStorage.setItem('theme', html.classList.contains('dark') ? 'dark' : 'light');
+            lucide.createIcons();
+        });
+
+        // Navigation Functions
+        function showSection(sectionName) {
+            Object.keys(sections).forEach(key => {
+                if (sections[key]) {
+                    sections[key].classList.add('hidden');
+                }
+            });
+
+            if (sections[sectionName]) {
+                sections[sectionName].classList.remove('hidden');
+                currentSection = sectionName;
+
+                // Reinitialize icons when showing new sections
+                setTimeout(() => lucide.createIcons(), 100);
+            }
+        }
+
+        // Event Listeners
+        document.getElementById('startBtn').addEventListener('click', () => {
+            showSection('upload');
+        });
+
+        document.getElementById('backToLanding').addEventListener('click', () => {
+            showSection('landing');
+            resetUpload();
+        });
+
+        document.getElementById('newAnalysisBtn').addEventListener('click', () => {
+            showSection('landing');
+            resetUpload();
+        });
+
+        // File Upload Functions
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const filePreview = document.getElementById('filePreview');
+        const processBtn = document.getElementById('processBtn');
+
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            // Validate file type
+            if (file.type !== 'application/pdf') {
+                showToast('error', 'Ficheiro inválido', 'Por favor, selecione um ficheiro PDF.');
+                return;
+            }
+
+            // Validate file size (10MB max)
+            if (file.size > 10 * 1024 * 1024) {
+                showToast('error', 'Ficheiro muito grande', 'O tamanho máximo permitido é 10MB.');
+                return;
+            }
+
+            selectedFile = file;
+            showFilePreview(file);
+        }
+
+        function showFilePreview(file) {
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = formatFileSize(file.size);
+
+            uploadArea.classList.add('hidden');
+            filePreview.classList.remove('hidden');
+            processBtn.classList.remove('hidden');
+
+            lucide.createIcons();
+        }
+
+        document.getElementById('removeFile').addEventListener('click', () => {
+            resetUpload();
+        });
+
+        function resetUpload() {
+            selectedFile = null;
+            fileInput.value = '';
+            uploadArea.classList.remove('hidden');
+            filePreview.classList.add('hidden');
+            processBtn.classList.add('hidden');
+
+            if (statusInterval) {
+                clearInterval(statusInterval);
+                statusInterval = null;
+            }
+        }
+
+        // Process Upload
+        processBtn.addEventListener('click', async () => {
+            if (!selectedFile) {
+                showToast('error', 'Nenhum ficheiro selecionado', 'Por favor, selecione um ficheiro IES.');
+                return;
+            }
+
+            try {
+                showLoading(true);
+
+                // Create FormData for API
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                formData.append('nif', '000000000'); // Placeholder - will be extracted from IES
+                formData.append('ano_exercicio', '2023'); // Placeholder
+                formData.append('designacao_social', 'Empresa'); // Placeholder
+                formData.append('email', 'user@autofund.pt');
+                formData.append('context', 'AutoFund AI automatic processing');
+
+                // Upload file
+                const response = await fetch(`${API_BASE_URL}/api/upload`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Authorization': 'Bearer authtoken123' // Simple token for MVP
+                    }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Erro no upload');
+                }
+
+                const result = await response.json();
+                currentTaskId = result.task_id;
+
+                // Show processing section
+                showSection('processing');
+                showLoading(false);
+
+                // Start polling for status
+                startStatusPolling();
+
+            } catch (error) {
+                console.error('Upload error:', error);
+                showLoading(false);
+                showToast('error', 'Erro no upload', error.message);
+            }
+        });
+
+        // Status Polling
+        function startStatusPolling() {
+            let progress = 35;
+
+            statusInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/status/${currentTaskId}`, {
+                        headers: {
+                            'Authorization': 'Bearer authtoken123'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Erro ao verificar status');
+                    }
+
+                    const status = await response.json();
+
+                    // Update progress bar based on status
+                    if (status.status === 'extracting') {
+                        progress = 50;
+                        updateProgress(progress, 'A extrair dados financeiros...');
+                        updateTimeline(1);
+                    } else if (status.status === 'analyzing') {
+                        progress = 75;
+                        updateProgress(progress, 'A validar rácios financeiros...');
+                        updateTimeline(2);
+                    } else if (status.status === 'completed') {
+                        progress = 100;
+                        updateProgress(progress, 'Análise completa!');
+                        updateTimeline(3);
+
+                        clearInterval(statusInterval);
+
+                        // Show results
+                        setTimeout(() => {
+                            showResults(status.result);
+                        }, 1000);
+                    } else if (status.status === 'error') {
+                        throw new Error(status.error || 'Erro no processamento');
+                    }
+
+                    // Update estimated time
+                    const remainingTime = Math.max(0, Math.ceil((100 - progress) * 0.9));
+                    document.getElementById('estimatedTime').textContent = `${remainingTime} segundos`;
+
+                } catch (error) {
+                    console.error('Status check error:', error);
+                    clearInterval(statusInterval);
+                    showLoading(false);
+                    showToast('error', 'Erro no processamento', error.message);
+                    showSection('upload');
+                }
+            }, 2000);
+        }
+
+        function updateProgress(percent, text) {
+            const progressBar = document.getElementById('progressBar');
+            const estimatedTime = document.getElementById('estimatedTime');
+
+            progressBar.style.width = `${percent}%`;
+            if (text) estimatedTime.textContent = text;
+        }
+
+        function updateTimeline(activeIndex) {
+            const timelineItems = document.querySelectorAll('.timeline-item');
+            timelineItems.forEach((item, index) => {
+                const icon = item.querySelector('.timeline-icon');
+                const text = item.querySelector('p.font-semibold');
+                const statusIcon = item.querySelector('.i-lucide-check-circle, .i-lucide-clock, .loading-dots');
+
+                if (index < activeIndex) {
+                    // Completed
+                    icon.className = 'timeline-icon bg-green-100 dark:bg-green-900';
+                    text.className = 'font-semibold text-gray-900 dark:text-white';
+
+                    // Remove existing status icons
+                    if (statusIcon) statusIcon.remove();
+
+                    // Add checkmark
+                    const checkDiv = document.createElement('div');
+                    checkDiv.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5 text-green-600"></i>';
+                    item.querySelector('.flex.justify-between').appendChild(checkDiv.firstElementChild);
+
+                } else if (index === activeIndex) {
+                    // Active
+                    icon.className = 'timeline-icon bg-blue-100 dark:bg-blue-900';
+                    text.className = 'font-semibold text-gray-900 dark:text-white';
+
+                    // Remove existing status icons
+                    if (statusIcon) statusIcon.remove();
+
+                    // Add loading dots
+                    const loadingDiv = document.createElement('div');
+                    loadingDiv.innerHTML = `
+                        <div class="loading-dots flex space-x-1">
+                            <span class="w-2 h-2 bg-primary rounded-full"></span>
+                            <span class="w-2 h-2 bg-primary rounded-full"></span>
+                            <span class="w-2 h-2 bg-primary rounded-full"></span>
+                        </div>
+                    `;
+                    item.querySelector('.flex.justify-between').appendChild(loadingDiv.firstElementChild);
+
+                } else {
+                    // Pending
+                    icon.className = 'timeline-icon bg-gray-100 dark:bg-gray-700';
+                    text.className = 'font-semibold text-gray-400';
+
+                    // Remove existing status icons
+                    if (statusIcon) statusIcon.remove();
+
+                    // Add clock
+                    const clockDiv = document.createElement('div');
+                    clockDiv.innerHTML = '<i data-lucide="clock" class="w-5 h-5 text-gray-400"></i>';
+                    item.querySelector('.flex.justify-between').appendChild(clockDiv.firstElementChild);
+                }
+            });
+
+            lucide.createIcons();
+        }
+
+        // Show Results
+        function showResults(result) {
+            showSection('results');
+
+            // Update company information
+            document.getElementById('companyName').textContent = result.metadata?.designacao_social || 'Empresa';
+            document.getElementById('companyNIF').textContent = result.metadata?.nif || 'N/A';
+            document.getElementById('companyYear').textContent = result.metadata?.ano_exercicio || 'N/A';
+
+            // Update rating
+            const rating = result.analise?.rating || 'MÉDIO';
+            const ratingBadge = document.getElementById('ratingBadge');
+            const ratingText = document.getElementById('ratingText');
+
+            ratingText.textContent = rating;
+
+            // Set rating colors
+            const ratingColors = {
+                'BAIXO': 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200',
+                'MÉDIO': 'bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200',
+                'ALTO': 'bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200',
+                'CRÍTICO': 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+            };
+
+            ratingBadge.className = `inline-flex items-center space-x-2 px-4 py-2 rounded-full ${ratingColors[rating] || ratingColors['MÉDIO']}`;
+
+            // Update financial metrics
+            const dados = result.dados_financeiros || {};
+
+            document.getElementById('volumeNegocios').textContent = formatCurrency(dados.volume_negocios || 0);
+            document.getElementById('ebitda').textContent = formatCurrency(dados.ebitda || 0);
+            document.getElementById('autonomiaFinanceira').textContent = formatPercentage(dados.autonomia_financeira || 0);
+            document.getElementById('liquidezGeral').textContent = formatNumber(dados.liquidez_geral || 0, 1);
+
+            // Update additional metrics
+            const margemEbitda = dados.volume_negocios ? (dados.ebitda / dados.volume_negocios) * 100 : 0;
+            document.getElementById('margemEbitda').textContent = `${margemEbitda.toFixed(1)}% margem`;
+
+            // Update status texts
+            document.getElementById('autonomiaStatus').textContent = getAutonomiaStatus(dados.autonomia_financeira || 0);
+            document.getElementById('liquidezStatus').textContent = getLiquidezStatus(dados.liquidez_geral || 0);
+            document.getElementById('volumeGrowth').textContent = '+12.5%'; // Mock growth
+
+            // Create charts
+            createFinancialChart(dados);
+            createRatingChart(rating);
+
+            // Show recommendations
+            showRecommendations(result.analise?.recomendacoes || []);
+
+            // Setup download buttons
+            setupDownloads(result);
+
+            lucide.createIcons();
+        }
+
+        // Charts
+        function createFinancialChart(dados) {
+            const ctx = document.getElementById('financialChart').getContext('2d');
+
+            if (financialChart) {
+                financialChart.destroy();
+            }
+
+            financialChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Volume Negócios', 'EBITDA', 'Ativo', 'Passivo', 'Capital Próprio'],
+                    datasets: [{
+                        label: 'Valores Financeiros (€)',
+                        data: [
+                            dados.volume_negocios || 0,
+                            dados.ebitda || 0,
+                            dados.ativo_total || 0,
+                            dados.passivo_total || 0,
+                            dados.capital_proprio || 0
+                        ],
+                        backgroundColor: [
+                            'rgba(30, 64, 175, 0.8)',
+                            'rgba(16, 185, 129, 0.8)',
+                            'rgba(251, 191, 36, 0.8)',
+                            'rgba(239, 68, 68, 0.8)',
+                            'rgba(139, 92, 246, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(30, 64, 175, 1)',
+                            'rgba(16, 185, 129, 1)',
+                            'rgba(251, 191, 36, 1)',
+                            'rgba(239, 68, 68, 1)',
+                            'rgba(139, 92, 246, 1)'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createRatingChart(rating) {
+            const ctx = document.getElementById('ratingChart').getContext('2d');
+
+            if (ratingChart) {
+                ratingChart.destroy();
+            }
+
+            const ratingScores = {
+                'BAIXO': 85,
+                'MÉDIO': 65,
+                'ALTO': 40,
+                'CRÍTICO': 20
+            };
+
+            const ratingColors = {
+                'BAIXO': 'rgba(16, 185, 129, 0.8)',
+                'MÉDIO': 'rgba(251, 191, 36, 0.8)',
+                'ALTO': 'rgba(251, 146, 60, 0.8)',
+                'CRÍTICO': 'rgba(239, 68, 68, 0.8)'
+            };
+
+            ratingChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Pontuação', 'Restante'],
+                    datasets: [{
+                        data: [ratingScores[rating] || 50, 100 - (ratingScores[rating] || 50)],
+                        backgroundColor: [
+                            ratingColors[rating] || ratingColors['MÉDIO'],
+                            'rgba(229, 231, 235, 0.3)'
+                        ],
+                        borderColor: [
+                            ratingColors[rating] || ratingColors['MÉDIO'],
+                            'rgba(229, 231, 235, 0.5)'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function showRecommendations(recommendations) {
+            const container = document.getElementById('recommendations');
+            container.innerHTML = '';
+
+            const defaultRecommendations = [
+                'Manter os níveis atuais de liquidez para garantir capacidade de pagamento',
+                'Considerar estratégias para reduzir o endividamento a curto prazo',
+                'Melhorar a margem de EBITDA através de otimização de custos operacionais'
+            ];
+
+            const recs = recommendations.length > 0 ? recommendations : defaultRecommendations;
+
+            recs.forEach(rec => {
+                const div = document.createElement('div');
+                div.className = 'flex items-start space-x-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg';
+                div.innerHTML = `
+                    <i data-lucide="check-circle" class="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0"></i>
+                    <p class="text-gray-700 dark:text-gray-300">${rec}</p>
+                `;
+                container.appendChild(div);
+            });
+
+            lucide.createIcons();
+        }
+
+        function setupDownloads(result) {
+            document.getElementById('downloadExcel').addEventListener('click', () => {
+                downloadFile('excel');
+            });
+
+            document.getElementById('downloadJSON').addEventListener('click', () => {
+                downloadFile('json');
+            });
+        }
+
+        async function downloadFile(fileType) {
+            if (!currentTaskId) {
+                showToast('error', 'Erro', 'ID da tarefa não encontrado');
+                return;
+            }
+
+            try {
+                showLoading(true);
+
+                const response = await fetch(`${API_BASE_URL}/api/download/${currentTaskId}/${fileType}`, {
+                    headers: {
+                        'Authorization': 'Bearer authtoken123'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erro ao descarregar ficheiro');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+
+                const filename = fileType === 'excel'
+                    ? `autofund_analysis_${Date.now()}.xlsx`
+                    : `autofund_analysis_${Date.now()}.json`;
+
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                showLoading(false);
+                showToast('success', 'Download concluído', `Ficheiro ${fileType.toUpperCase()} descarregado com sucesso`);
+
+            } catch (error) {
+                console.error('Download error:', error);
+                showLoading(false);
+                showToast('error', 'Erro no download', error.message);
+            }
+        }
+
+        // Share functionality
+        document.getElementById('shareResultsBtn').addEventListener('click', async () => {
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'AutoFund AI - Análise Completa',
+                        text: 'Confira a minha análise financeira para candidatura Portugal 2030',
+                        url: window.location.href
+                    });
+                } catch (error) {
+                    console.log('Share cancelled');
+                }
+            } else {
+                // Fallback: copy to clipboard
+                try {
+                    await navigator.clipboard.writeText(window.location.href);
+                    showToast('success', 'Link copiado', 'O link foi copiado para a área de transferência');
+                } catch (error) {
+                    showToast('error', 'Erro', 'Não foi possível partilhar o link');
+                }
+            }
+        });
+
+        // Utility Functions
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('pt-PT', {
+                style: 'currency',
+                currency: 'EUR',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(value);
+        }
+
+        function formatNumber(value, decimals = 0) {
+            return new Intl.NumberFormat('pt-PT', {
+                minimumFractionDigits: decimals,
+                maximumFractionDigits: decimals
+            }).format(value);
+        }
+
+        function formatPercentage(value) {
+            return `${(value * 100).toFixed(1)}%`;
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function getAutonomiaStatus(value) {
+            if (value >= 0.5) return 'Excelente';
+            if (value >= 0.3) return 'Bom';
+            if (value >= 0.2) return 'Adequado';
+            return 'Baixo';
+        }
+
+        function getLiquidezStatus(value) {
+            if (value >= 1.5) return 'Excelente';
+            if (value >= 1.2) return 'Bom';
+            if (value >= 1.0) return 'Adequado';
+            return 'Baixo';
+        }
+
+        function showLoading(show) {
+            const overlay = document.getElementById('loadingOverlay');
+            if (show) {
+                overlay.classList.remove('hidden');
+            } else {
+                overlay.classList.add('hidden');
+            }
+            lucide.createIcons();
+        }
+
+        function showToast(type, title, message) {
+            const toast = document.getElementById('toast');
+            const toastIcon = document.getElementById('toastIcon');
+            const toastTitle = document.getElementById('toastTitle');
+            const toastMessage = document.getElementById('toastMessage');
+
+            // Set icon based on type
+            const icons = {
+                success: '<i data-lucide="check-circle" class="w-6 h-6 text-green-600"></i>',
+                error: '<i data-lucide="x-circle" class="w-6 h-6 text-red-600"></i>',
+                warning: '<i data-lucide="alert-triangle" class="w-6 h-6 text-amber-600"></i>',
+                info: '<i data-lucide="info" class="w-6 h-6 text-primary"></i>'
+            };
+
+            toastIcon.innerHTML = icons[type] || icons.info;
+            toastTitle.textContent = title;
+            toastMessage.textContent = message;
+
+            toast.classList.remove('hidden');
+            toast.classList.add('animate-slide-up');
+
+            // Auto hide after 5 seconds
+            setTimeout(() => {
+                toast.classList.add('hidden');
+                toast.classList.remove('animate-slide-up');
+            }, 5000);
+
+            lucide.createIcons();
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+
+            // Check API status
+            fetch(`${API_BASE_URL}/health`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('API Status:', data);
+                })
+                .catch(error => {
+                    console.error('API Health check failed:', error);
+                    showToast('warning', 'API Offline', 'A API pode não estar disponível no momento');
+                });
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (statusInterval) {
+                clearInterval(statusInterval);
+            }
+        });
+    </script>
+</body>
+</html>

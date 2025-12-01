@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoFund AI - Análise Financeira Portugal 2030</title>
+    <style>
+        :root {
+            --primary-blue: #1e3a8a;
+            --light-blue: #3b82f6;
+            --gold: #fbbf24;
+            --dark-gray: #1f2937;
+            --light-gray: #f3f4f6;
+            --white: #ffffff;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --border: #e5e7eb;
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--light-blue) 100%);
+            min-height: 100vh;
+            color: var(--dark-gray);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            color: var(--white);
+            margin-bottom: 3rem;
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .tagline {
+            font-size: 1.2rem;
+            opacity: 0.95;
+        }
+
+        .main-card {
+            background: var(--white);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            padding: 3rem;
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            color: var(--primary-blue);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: var(--gold);
+            border-radius: 2px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: 600;
+            color: var(--dark-gray);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="number"],
+        select {
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: var(--white);
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--light-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .upload-area {
+            border: 3px dashed var(--border);
+            border-radius: 12px;
+            padding: 3rem 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: var(--light-gray);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area.dragover {
+            border-color: var(--light-blue);
+            background: rgba(59, 130, 246, 0.05);
+            transform: scale(1.02);
+        }
+
+        .upload-area.has-file {
+            border-color: var(--success);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--light-blue);
+        }
+
+        .upload-text {
+            font-size: 1.1rem;
+            color: var(--dark-gray);
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-subtext {
+            font-size: 0.9rem;
+            color: #6b7280;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--light-blue) 100%);
+            color: var(--white);
+            border: none;
+            padding: 1rem 2.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 15px rgba(30, 58, 138, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(30, 58, 138, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .processing-section {
+            display: none;
+            margin-top: 2rem;
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: 2rem;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 8px;
+            bottom: 8px;
+            width: 2px;
+            background: var(--border);
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 1.5rem;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .timeline-marker {
+            position: absolute;
+            left: -2rem;
+            top: 4px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--white);
+            border: 2px solid var(--border);
+            z-index: 1;
+        }
+
+        .timeline-marker.active {
+            background: var(--light-blue);
+            border-color: var(--light-blue);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+            }
+        }
+
+        .results-section {
+            display: none;
+            margin-top: 2rem;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-blue);
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .rating-badge {
+            display: inline-block;
+            padding: 0.5rem 1.5rem;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+
+        .rating-ALTO {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+        }
+
+        .rating-MEDIO {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .rating-BAIXO {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .recommendations {
+            background: var(--light-gray);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .recommendations h3 {
+            color: var(--primary-blue);
+            margin-bottom: 1rem;
+        }
+
+        .recommendations ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .recommendations li {
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .recommendations li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: var(--light-blue);
+            font-weight: bold;
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--error);
+            color: var(--error);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .main-card {
+                padding: 1.5rem;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">AutoFund AI</div>
+            <div class="tagline">Análise Inteligente para Candidaturas Portugal 2030</div>
+        </header>
+
+        <div class="main-card">
+            <form id="uploadForm">
+                <h2 class="section-title">Dados da Empresa</h2>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="designacao_social">Designação Social *</label>
+                        <input type="text" id="designacao_social" name="designacao_social" required placeholder="Ex: Empresa S.A.">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="nif">NIF *</label>
+                        <input type="text" id="nif" name="nif" required placeholder="Ex: 123456789" maxlength="9">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ano_exercicio">Ano de Exercício *</label>
+                        <select id="ano_exercicio" name="ano_exercicio" required>
+                            <option value="">Selecione...</option>
+                            <option value="2024">2024</option>
+                            <option value="2023">2023</option>
+                            <option value="2022">2022</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Email *</label>
+                        <input type="email" id="email" name="email" required placeholder="exemplo@empresa.pt">
+                    </div>
+                </div>
+
+                <h2 class="section-title">Documento IES</h2>
+
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📄</div>
+                    <div class="upload-text">Arraste o ficheiro IES aqui</div>
+                    <div class="upload-subtext">ou clique para selecionar (PDF máximo 10MB)</div>
+                    <input type="file" id="file" class="file-input" accept=".pdf" required>
+                </div>
+
+                <div style="margin-top: 2rem; text-align: center;">
+                    <button type="submit" class="btn-primary" id="submitBtn">
+                        <span>🚀</span>
+                        <span>Analisar Documento</span>
+                    </button>
+                </div>
+
+                <div class="error-message" id="errorMessage"></div>
+            </form>
+
+            <div class="processing-section" id="processingSection">
+                <h2 class="section-title">Processamento</h2>
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-marker active"></div>
+                        <div>A validar documento...</div>
+                    </div>
+                    <div class="timeline-item" id="extractItem" style="display: none;">
+                        <div class="timeline-marker"></div>
+                        <div>A extrair dados financeiros...</div>
+                    </div>
+                    <div class="timeline-item" id="analyzeItem" style="display: none;">
+                        <div class="timeline-marker"></div>
+                        <div>A analisar indicadores...</div>
+                    </div>
+                    <div class="timeline-item" id="generateItem" style="display: none;">
+                        <div class="timeline-marker"></div>
+                        <div>A gerar relatórios...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="results-section" id="resultsSection">
+                <h2 class="section-title">Resultados da Análise</h2>
+
+                <div style="text-align: center; margin-bottom: 2rem;">
+                    <div class="rating-badge" id="ratingBadge">--</div>
+                    <div style="font-size: 1.2rem; color: #6b7280;">Nível de Risco Financeiro</div>
+                </div>
+
+                <div class="metrics-grid" id="metricsGrid">
+                    <!-- Metrics will be inserted here -->
+                </div>
+
+                <div class="recommendations">
+                    <h3>Recomendações Estratégicas</h3>
+                    <ul id="recommendationsList">
+                        <!-- Recommendations will be inserted here -->
+                    </ul>
+                </div>
+
+                <div style="margin-top: 2rem; text-align: center;">
+                    <button class="btn-primary" onclick="downloadExcel()">
+                        <span>📊</span>
+                        <span>Baixar Relatório Excel</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API Configuration
+        const API_BASE_URL = 'http://localhost:8000';
+
+        // Global variables
+        let currentTaskId = null;
+        let currentFile = null;
+
+        // DOM elements
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('file');
+        const uploadForm = document.getElementById('uploadForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const errorMessage = document.getElementById('errorMessage');
+        const processingSection = document.getElementById('processingSection');
+        const resultsSection = document.getElementById('resultsSection');
+
+        // Drag and drop
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            if (file.type !== 'application/pdf') {
+                showError('Por favor, selecione um ficheiro PDF');
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) {
+                showError('O ficheiro não pode exceder 10MB');
+                return;
+            }
+
+            currentFile = file;
+            uploadArea.classList.add('has-file');
+            uploadArea.innerHTML = `
+                <div class="upload-icon">✅</div>
+                <div class="upload-text">${file.name}</div>
+                <div class="upload-subtext">Clique para alterar o ficheiro</div>
+            `;
+            uploadArea.addEventListener('click', () => fileInput.click());
+
+            hideError();
+        }
+
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!currentFile) {
+                showError('Por favor, selecione o ficheiro IES');
+                return;
+            }
+
+            // Validate form fields
+            const formData = new FormData(uploadForm);
+            const requiredFields = ['designacao_social', 'nif', 'ano_exercicio', 'email'];
+
+            for (const field of requiredFields) {
+                if (!formData.get(field)) {
+                    showError(`Por favor, preencha o campo ${field}`);
+                    return;
+                }
+            }
+
+            // Validate NIF format
+            const nif = formData.get('nif');
+            if (!/^\d{9}$/.test(nif)) {
+                showError('NIF deve ter 9 dígitos');
+                return;
+            }
+
+            // Show processing
+            showProcessing();
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span>⏳</span><span>A processar...</span>';
+
+            try {
+                // Create FormData with all required fields
+                const uploadFormData = new FormData();
+                uploadFormData.append('file', currentFile);
+                uploadFormData.append('nif', formData.get('nif'));
+                uploadFormData.append('ano_exercicio', formData.get('ano_exercicio'));
+                uploadFormData.append('designacao_social', formData.get('designacao_social'));
+                uploadFormData.append('email', formData.get('email'));
+                uploadFormData.append('context', 'Analise para candidatura Portugal 2030');
+
+                // Upload file
+                const response = await fetch(`${API_BASE_URL}/api/upload`, {
+                    method: 'POST',
+                    body: uploadFormData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Erro ao fazer upload');
+                }
+
+                const result = await response.json();
+                currentTaskId = result.task_id;
+
+                // Start polling for status
+                await checkStatus(currentTaskId);
+
+            } catch (error) {
+                console.error('Error:', error);
+                showError(error.message);
+                hideProcessing();
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span>🚀</span><span>Analisar Documento</span>';
+            }
+        });
+
+        async function checkStatus(taskId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/status/${taskId}`);
+
+                if (!response.ok) {
+                    throw new Error('Erro ao verificar status');
+                }
+
+                const status = await response.json();
+
+                // Update timeline
+                if (status.status === 'processing') {
+                    document.getElementById('extractItem').style.display = 'block';
+                    setTimeout(() => {
+                        document.getElementById('analyzeItem').style.display = 'block';
+                    }, 1000);
+                    setTimeout(() => {
+                        document.getElementById('generateItem').style.display = 'block';
+                    }, 2000);
+
+                    // Keep polling
+                    setTimeout(() => checkStatus(taskId), 3000);
+                } else if (status.status === 'completed') {
+                    // Get results
+                    await getResults(taskId);
+                } else if (status.status === 'failed') {
+                    throw new Error('Processamento falhou');
+                }
+
+            } catch (error) {
+                console.error('Status error:', error);
+                showError(error.message);
+                hideProcessing();
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span>🚀</span><span>Analisar Documento</span>';
+            }
+        }
+
+        async function getResults(taskId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/result/${taskId}`);
+
+                if (!response.ok) {
+                    throw new Error('Erro ao obter resultados');
+                }
+
+                const result = await response.json();
+                displayResults(result);
+
+            } catch (error) {
+                console.error('Results error:', error);
+                showError(error.message);
+            }
+        }
+
+        function displayResults(result) {
+            hideProcessing();
+            resultsSection.style.display = 'block';
+
+            // Display rating
+            const ratingBadge = document.getElementById('ratingBadge');
+            const rating = result.analise?.rating || 'MÉDIO';
+            ratingBadge.textContent = rating;
+            ratingBadge.className = `rating-badge rating-${rating}`;
+
+            // Display metrics
+            const metricsGrid = document.getElementById('metricsGrid');
+            const dados = result.dados_financeiros || {};
+
+            metricsGrid.innerHTML = `
+                <div class="metric-card">
+                    <div class="metric-value">€${formatNumber(dados.ativo_total || 0)}</div>
+                    <div class="metric-label">Ativo Total</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">€${formatNumber(dados.volume_negocios || 0)}</div>
+                    <div class="metric-label">Volume de Negócios</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">€${formatNumber(dados.ebitda || 0)}</div>
+                    <div class="metric-label">EBITDA</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${(dados.autonomia_financeira || 0).toFixed(1)}%</div>
+                    <div class="metric-label">Autonomia Financeira</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${(dados.liquidez_geral || 0).toFixed(2)}</div>
+                    <div class="metric-label">Liquidez Geral</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${(dados.margem_ebitda || 0).toFixed(1)}%</div>
+                    <div class="metric-label">Margem EBITDA</div>
+                </div>
+            `;
+
+            // Display recommendations
+            const recommendationsList = document.getElementById('recommendationsList');
+            const recommendations = result.analise?.recomendacoes || [];
+
+            recommendationsList.innerHTML = recommendations
+                .map(rec => `<li>${rec}</li>`)
+                .join('');
+
+            // Store task ID for download
+            window.currentTaskId = taskId;
+        }
+
+        function downloadExcel() {
+            if (!window.currentTaskId) return;
+
+            window.open(`${API_BASE_URL}/api/download/${window.currentTaskId}/excel`);
+        }
+
+        function showProcessing() {
+            processingSection.style.display = 'block';
+            resultsSection.style.display = 'none';
+            hideError();
+        }
+
+        function hideProcessing() {
+            processingSection.style.display = 'none';
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+
+        function hideError() {
+            errorMessage.style.display = 'none';
+        }
+
+        function formatNumber(num) {
+            return new Intl.NumberFormat('pt-PT').format(num);
+        }
+    </script>
+</body>
+</html>

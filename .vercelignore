@@ -1,0 +1,11 @@
+api/
+requirements.txt
+autofund_ai_poc_v3.py
+create_template.py
+test_offline.py
+ARQUITETURA_PRODUCAO.md
+IES - 2023.pdf
+template_iapmei.xlsx
+outputs/
+*.log
+.env*

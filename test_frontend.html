@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste AutoFund AI Frontend</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Teste Frontend AutoFund AI</h1>
+
+    <div class="test-section">
+        <h2>1. Conexão com API</h2>
+        <button onclick="testAPIHealth()">Testar API Health</button>
+        <div id="apiHealthResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Upload de Ficheiro IES</h2>
+        <input type="file" id="testFileInput" accept=".pdf">
+        <button onclick="testFileUpload()">Upload IES</button>
+        <div id="uploadResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Verificação de Status</h2>
+        <input type="text" id="taskIdInput" placeholder="Task ID">
+        <button onclick="checkStatus()">Verificar Status</button>
+        <div id="statusResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Download de Ficheiros</h2>
+        <input type="text" id="downloadTaskIdInput" placeholder="Task ID">
+        <button onclick="downloadFile('excel')">Download Excel</button>
+        <button onclick="downloadFile('json')">Download JSON</button>
+        <div id="downloadResult"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000';
+
+        function showResult(elementId, content, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${content}</div>`;
+        }
+
+        async function testAPIHealth() {
+            try {
+                showResult('apiHealthResult', 'A testar conexão...', 'info');
+
+                const response = await fetch(`${API_BASE_URL}/health`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult('apiHealthResult', `
+                        <strong>✅ API Conectada!</strong><br>
+                        Status: ${data.status}<br>
+                        Versão: ${data.version}<br>
+                        Tasks Ativas: ${data.active_tasks}<br>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, 'success');
+                } else {
+                    throw new Error('API não respondeu corretamente');
+                }
+            } catch (error) {
+                showResult('apiHealthResult', `❌ Erro: ${error.message}`, 'error');
+            }
+        }
+
+        async function testFileUpload() {
+            const fileInput = document.getElementById('testFileInput');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                showResult('uploadResult', 'Por favor, selecione um ficheiro PDF', 'error');
+                return;
+            }
+
+            if (file.type !== 'application/pdf') {
+                showResult('uploadResult', 'O ficheiro deve ser um PDF', 'error');
+                return;
+            }
+
+            try {
+                showResult('uploadResult', 'A fazer upload...', 'info');
+
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('nif', '123456789');
+                formData.append('ano_exercicio', '2023');
+                formData.append('designacao_social', 'Empresa Teste Lda.');
+                formData.append('email', 'teste@autofund.pt');
+                formData.append('context', 'Teste frontend');
+
+                const response = await fetch(`${API_BASE_URL}/api/upload`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Authorization': 'Bearer authtoken123'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult('uploadResult', `
+                        <strong>✅ Upload iniciado!</strong><br>
+                        Task ID: ${data.task_id}<br>
+                        Status: ${data.status}<br>
+                        Mensagem: ${data.message}<br>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, 'success');
+
+                    // Auto-fill task ID for status checking
+                    document.getElementById('taskIdInput').value = data.task_id;
+                    document.getElementById('downloadTaskIdInput').value = data.task_id;
+                } else {
+                    throw new Error(data.detail || 'Erro no upload');
+                }
+            } catch (error) {
+                showResult('uploadResult', `❌ Erro: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkStatus() {
+            const taskId = document.getElementById('taskIdInput').value;
+
+            if (!taskId) {
+                showResult('statusResult', 'Por favor, insira um Task ID', 'error');
+                return;
+            }
+
+            try {
+                showResult('statusResult', 'A verificar status...', 'info');
+
+                const response = await fetch(`${API_BASE_URL}/api/status/${taskId}`, {
+                    headers: {
+                        'Authorization': 'Bearer authtoken123'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    let statusContent = `
+                        <strong>Status da Task ${taskId}:</strong><br>
+                        Status: ${data.status}<br>
+                        Criado: ${data.created_at}
+                    `;
+
+                    if (data.status === 'completed') {
+                        statusContent += `<br>✅ <strong>Concluído!</strong>`;
+                        if (data.result) {
+                            statusContent += `<br><pre>${JSON.stringify(data.result, null, 2)}</pre>`;
+                        }
+                    } else if (data.status === 'error') {
+                        statusContent += `<br>❌ <strong>Erro:</strong> ${data.error}`;
+                    } else {
+                        statusContent += `<br>⏳ A processar...`;
+                    }
+
+                    showResult('statusResult', statusContent, data.status === 'error' ? 'error' : 'success');
+                } else {
+                    throw new Error(data.detail || 'Erro ao verificar status');
+                }
+            } catch (error) {
+                showResult('statusResult', `❌ Erro: ${error.message}`, 'error');
+            }
+        }
+
+        async function downloadFile(fileType) {
+            const taskId = document.getElementById('downloadTaskIdInput').value;
+
+            if (!taskId) {
+                showResult('downloadResult', 'Por favor, insira um Task ID', 'error');
+                return;
+            }
+
+            try {
+                showResult('downloadResult', `A descarregar ${fileType.toUpperCase()}...`, 'info');
+
+                const response = await fetch(`${API_BASE_URL}/api/download/${taskId}/${fileType}`, {
+                    headers: {
+                        'Authorization': 'Bearer authtoken123'
+                    }
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `autofund_${fileType}_${Date.now()}.${fileType === 'excel' ? 'xlsx' : 'json'}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+
+                    showResult('downloadResult', `✅ Download ${fileType.toUpperCase()} concluído!`, 'success');
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Erro no download');
+                }
+            } catch (error) {
+                showResult('downloadResult', `❌ Erro: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-test API health on page load
+        window.addEventListener('load', () => {
+            setTimeout(testAPIHealth, 1000);
+        });
+    </script>
+</body>
+</html>

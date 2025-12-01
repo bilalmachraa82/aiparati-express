@@ -1,26 +1,67 @@
-@import "tailwindcss";
+@import url('https://api.fontshare.com/v2/css?f[]=satoshi@700,500,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap');
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* A simpler, professional dark theme */
+    --background-rgb: 17, 24, 39;      /* Tailwind gray-900 */
+    --foreground-rgb: 229, 231, 235;   /* Tailwind gray-200 */
+    
+    --card-background-rgb: 31, 41, 55; /* Tailwind gray-800 */
+
+    --primary-blue-rgb: 59, 130, 246;   /* Tailwind blue-500 */
+    --primary-purple-rgb: 139, 92, 246; /* Tailwind violet-500 */
+  }
+
+  body {
+    color: rgb(var(--foreground-rgb));
+    background-color: rgb(var(--background-rgb));
+    font-family: 'Satoshi', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Instrument Serif', serif;
+    color: white;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Simplified Helper classes */
+.glass-morphism {
+  background-color: rgb(var(--card-background-rgb));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.gradient-text {
+  background: linear-gradient(90deg, rgb(var(--primary-blue-rgb)), rgb(var(--primary-purple-rgb)));
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.btn-primary {
+  padding: 12px 20px;
+  background: rgb(var(--primary-blue-rgb));
+  color: white;
+  font-weight: 600;
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+.btn-primary:hover {
+  background: rgb(var(--primary-purple-rgb));
+}
+
+.btn-secondary {
+  padding: 12px 20px;
+  background: transparent;
+  color: white;
+  font-weight: 600;
+  border-radius: 9999px;
+  border: 1px solid rgb(var(--card-background-rgb));
+  transition: background-color 0.2s ease;
+}
+.btn-secondary:hover {
+  background-color: rgb(var(--card-background-rgb));
 }

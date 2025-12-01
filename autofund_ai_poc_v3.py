@@ -160,8 +160,19 @@ class DataExtractor:
     """Classe responsável pela extração de dados do PDF IES usando Claude 3.5 Sonnet"""
 
     def __init__(self, api_key: str):
-        self.client = anthropic.Anthropic(api_key=api_key)
-        self.file_id = None
+        # Handle custom base URL if configured
+        base_url = os.getenv('ANTHROPIC_BASE_URL')
+        auth_token = os.getenv('ANTHROPIC_AUTH_TOKEN')
+
+        # Check if we're using a custom proxy/API gateway
+        if base_url and auth_token:
+            self.client = anthropic.Anthropic(
+                api_key=auth_token,
+                base_url=base_url
+            )
+        else:
+            self.client = anthropic.Anthropic(api_key=api_key)
+        self.file_id = None  # Initialize file ID
 
     def upload_pdf(self, pdf_path: str) -> str:
         """Faz upload do PDF IES para a Anthropic Files API"""
@@ -296,7 +307,18 @@ class FinancialAnalyzer:
     """Classe para análise financeira e geração de insights usando Claude Opus 4.5"""
 
     def __init__(self, api_key: str):
-        self.client = anthropic.Anthropic(api_key=api_key)
+        # Handle custom base URL if configured
+        base_url = os.getenv('ANTHROPIC_BASE_URL')
+        auth_token = os.getenv('ANTHROPIC_AUTH_TOKEN')
+
+        # Check if we're using a custom proxy/API gateway
+        if base_url and auth_token:
+            self.client = anthropic.Anthropic(
+                api_key=auth_token,
+                base_url=base_url
+            )
+        else:
+            self.client = anthropic.Anthropic(api_key=api_key)
 
     def calculate_ratios(self, data: ExtracoesFinanceiras) -> Dict[str, float]:
         """Calcula rácios financeiros"""

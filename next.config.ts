@@ -1,17 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
-  experimental: {
-    serverComponentsExternalPackages: ['@tanstack/react-query']
-  },
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/:path*`,
-      },
-    ];
+  serverExternalPackages: ['@tanstack/react-query'],
+  turbopack: {
+    root: process.cwd(),
   },
 };
 

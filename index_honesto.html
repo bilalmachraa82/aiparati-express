@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoFund AI - Extração de Dados IES</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #64748b;
+            --success: #16a34a;
+            --warning: #d97706;
+            --error: #dc2626;
+            --light: #f8fafc;
+            --border: #e2e8f0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #1e293b;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 2rem;
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .tagline {
+            font-size: 1.1rem;
+            opacity: 0.95;
+        }
+
+        .main-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f9fafb;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary);
+            background: #f0f9ff;
+        }
+
+        .upload-area.has-file {
+            border-color: var(--success);
+            background: #f0fdf4;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results {
+            display: none;
+            margin-top: 2rem;
+        }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .data-item {
+            background: #f8fafc;
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .data-label {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-bottom: 0.25rem;
+        }
+
+        .data-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: start;
+            gap: 0.75rem;
+        }
+
+        .alert-info {
+            background: #eff6ff;
+            border: 1px solid #3b82f6;
+            color: #1e40af;
+        }
+
+        .alert-success {
+            background: #f0fdf4;
+            border: 1px solid #22c55e;
+            color: #15803d;
+        }
+
+        .alert-error {
+            background: #fef2f2;
+            border: 1px solid #ef4444;
+            color: #991b1b;
+        }
+
+        .steps {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .steps::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--border);
+            z-index: 0;
+        }
+
+        .step {
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            position: relative;
+            z-index: 1;
+        }
+
+        .step.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            border: 3px solid var(--border);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .data-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">AutoFund AI</div>
+            <div class="tagline">Extração Automática de Dados Financeiros do IES</div>
+        </header>
+
+        <div class="main-card">
+            <!-- Aviso honesto -->
+            <div class="alert alert-info">
+                <span>ℹ️</span>
+                <div>
+                    <strong>Esta é uma versão de demonstração.</strong><br>
+                    Extrai dados básicos do IES e gera um relatório Excel simples.
+                </div>
+            </div>
+
+            <!-- Passos -->
+            <div class="steps">
+                <div class="step active" id="step1">1</div>
+                <div class="step" id="step2">2</div>
+                <div class="step" id="step3">3</div>
+            </div>
+
+            <!-- Formulário -->
+            <form id="form">
+                <div class="section-title">1. Informações do Projeto</div>
+
+                <div class="form-group">
+                    <label for="email">Email para contato *</label>
+                    <input type="email" id="email" name="email" required placeholder="exemplo@empresa.pt">
+                </div>
+
+                <div class="form-group">
+                    <label for="descricao">Descrição do projeto (opcional)</label>
+                    <textarea id="descricao" name="descricao" rows="3" placeholder="Descreva brevemente o que pretende analisar..."></textarea>
+                </div>
+
+                <div class="section-title">2. Documento IES</div>
+
+                <div class="upload-area" id="uploadArea">
+                    <input type="file" id="file" class="file-input" accept=".pdf" required>
+                    <div class="upload-icon">📄</div>
+                    <div>Clique ou arraste o ficheiro IES aqui</div>
+                    <small>Apenas ficheiros PDF (máx. 10MB)</small>
+                </div>
+
+                <div style="margin-top: 2rem;">
+                    <button type="submit" class="btn-primary" id="submitBtn">
+                        <span>🚀</span>
+                        <span>Extrair Dados</span>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Loading -->
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <div>A processar documento...</div>
+            </div>
+
+            <!-- Resultados -->
+            <div class="results" id="results">
+                <div class="section-title">3. Dados Extraídos</div>
+
+                <div class="alert alert-success">
+                    <span>✅</span>
+                    <div>Dados extraídos com sucesso! Pode baixar o relatório Excel.</div>
+                </div>
+
+                <div class="data-grid" id="dadosGrid">
+                    <!-- Dados serão inseridos aqui -->
+                </div>
+
+                <div style="margin-top: 2rem; text-align: center;">
+                    <button class="btn-primary" onclick="downloadExcel()">
+                        <span>📊</span>
+                        <span>Baixar Relatório Excel</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        let currentTaskId = null;
+        let fileSelected = null;
+
+        // Upload
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('file');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#2563eb';
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.borderColor = '#e2e8f0';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#e2e8f0';
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type === 'application/pdf') {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            if (file.type !== 'application/pdf') {
+                alert('Por favor, selecione um ficheiro PDF');
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) {
+                alert('O ficheiro não pode exceder 10MB');
+                return;
+            }
+
+            fileSelected = file;
+            uploadArea.classList.add('has-file');
+            uploadArea.innerHTML = `
+                <div class="upload-icon">✅</div>
+                <div>${file.name}</div>
+                <small>Clique para alterar</small>
+            `;
+        }
+
+        // Form submit
+        document.getElementById('form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!fileSelected) {
+                alert('Por favor, selecione o ficheiro IES');
+                return;
+            }
+
+            const email = document.getElementById('email').value;
+            if (!email) {
+                alert('Por favor, preencha o email');
+                return;
+            }
+
+            // Atualizar steps
+            document.getElementById('step2').classList.add('active');
+
+            // Mostrar loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('submitBtn').disabled = true;
+
+            try {
+                // Criar FormData
+                const formData = new FormData();
+                formData.append('file', fileSelected);
+                formData.append('nif', ''); // O NIF deve ser extraído do IES
+                formData.append('ano_exercicio', '2024');
+                formData.append('designacao_social', '');
+                formData.append('email', email);
+                formData.append('context', 'Demo extração IES');
+
+                // Upload
+                const response = await fetch(`${API_BASE}/api/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erro no upload');
+                }
+
+                const result = await response.json();
+                currentTaskId = result.task_id;
+
+                // Verificar status
+                setTimeout(async () => {
+                    const statusResponse = await fetch(`${API_BASE}/api/status/${currentTaskId}`);
+                    const status = await statusResponse.json();
+
+                    if (status.status === 'completed') {
+                        // Obter resultados
+                        const resultResponse = await fetch(`${API_BASE}/api/result/${currentTaskId}`);
+                        const data = await resultResponse.json();
+
+                        // Mostrar resultados
+                        showResults(data);
+
+                        // Atualizar step 3
+                        document.getElementById('step3').classList.add('active');
+                    }
+                }, 2000);
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Erro ao processar ficheiro');
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('submitBtn').disabled = false;
+            }
+        });
+
+        function showResults(data) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('results').style.display = 'block';
+
+            const grid = document.getElementById('dadosGrid');
+            const financeiros = data.dados_financeiros || {};
+            const metadata = data.metadata || {};
+
+            grid.innerHTML = `
+                <div class="data-item">
+                    <div class="data-label">Empresa</div>
+                    <div class="data-value">${metadata.designacao_social || 'Não extraído'}</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">NIF</div>
+                    <div class="data-value">${metadata.nif || 'Não extraído'}</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Ativo Total</div>
+                    <div class="data-value">€${(financeiros.ativo_total || 0).toLocaleString('pt-PT')}</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Capital Próprio</div>
+                    <div class="data-value">€${(financeiros.capital_proprio || 0).toLocaleString('pt-PT')}</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Volume de Negócios</div>
+                    <div class="data-value">€${(financeiros.volume_negocios || 0).toLocaleString('pt-PT')}</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Autonomia Financeira</div>
+                    <div class="data-value">${(financeiros.autonomia_financeira || 0).toFixed(1)}%</div>
+                </div>
+            `;
+        }
+
+        function downloadExcel() {
+            if (!currentTaskId) return;
+            window.open(`${API_BASE}/api/download/${currentTaskId}/excel`);
+        }
+    </script>
+</body>
+</html>

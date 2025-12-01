@@ -3,7 +3,7 @@ AiparatiExpress API
 Backend FastAPI para processamento de IES e candidaturas Portugal 2030
 """
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, status
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, status, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import FileResponse
@@ -18,9 +18,23 @@ import logging
 from datetime import datetime
 import asyncio
 import uvicorn
+from dotenv import load_dotenv
 
-# Import do motor original
-from autofund_ai_poc_v3 import AutoFundAI, ExtracoesFinanceiras, AnaliseFinanceira
+# Carregar variáveis de ambiente (forçar override das variáveis existentes)
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'), override=True)
+
+# Modo mock para testes (ignorar API da Claude)
+MOCK_MODE = os.getenv('MOCK_MODE', 'false').lower() == 'true'
+
+# Import do motor original (condicional para mock mode)
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+if not MOCK_MODE:
+    from autofund_ai_poc_v3 import AutoFundAI, ExtracoesFinanceiras, AnaliseFinanceira
+else:
+    AutoFundAI = None
 
 # Configuração
 logging.basicConfig(level=logging.INFO)
@@ -33,13 +47,37 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS
+# CORS - Production ready with environment-based configuration
+allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "https://autofund-ai.vercel.app",
+    "https://autofund-ai-beta.vercel.app",
+    "https://*.vercel.app",
+]
+
+# Add additional origins from environment if available
+env_origins = os.getenv("ALLOWED_ORIGINS")
+if env_origins:
+    allowed_origins.extend([origin.strip() for origin in env_origins.split(",")])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Em produção, especificar domínios
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "X-Requested-With",
+        "X-CSRF-Token",
+        "X-Client-Version",
+        "Accept",
+        "Accept-Language",
+        "Cache-Control"
+    ],
+    expose_headers=["X-Total-Count", "X-Rate-Limit-Remaining"],
+    max_age=86400,  # 24 hours
 )
 
 # Segurança (simples para MVP)
@@ -53,6 +91,10 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 
 # Modelo de dados para API
 class ProcessRequest(BaseModel):
+    nif: str
+    ano_exercicio: str
+    designacao_social: str
+    email: str
     context: Optional[str] = None
 
 class ProcessResponse(BaseModel):
@@ -89,7 +131,11 @@ async def root():
 @app.post("/api/upload", response_model=ProcessResponse)
 async def upload_ies(
     file: UploadFile = File(...),
-    request: ProcessRequest = Depends(),
+    nif: str = Form(...),
+    ano_exercicio: str = Form(...),
+    designacao_social: str = Form(...),
+    email: str = Form(...),
+    context: Optional[str] = Form(None),
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -133,7 +179,11 @@ async def upload_ies(
         "user_id": user_id,
         "status": "uploaded",
         "file_path": str(file_path),
-        "context": request.context or "",
+        "nif": nif,
+        "ano_exercicio": ano_exercicio,
+        "designacao_social": designacao_social,
+        "email": email,
+        "context": context or "",
         "created_at": datetime.now(),
         "result": None
     }
@@ -159,16 +209,69 @@ async def process_ies_async(task_id: str):
         # Atualizar status
         task["status"] = "extracting"
 
-        # Inicializar AutoFundAI
-        api_key = os.getenv('ANTHROPIC_API_KEY')
-        if not api_key:
-            raise Exception("API key não configurada")
+        if MOCK_MODE:
+            # Mock processing for testing
+            await asyncio.sleep(2)  # Simulate processing time
+            task["status"] = "analyzing"
+            await asyncio.sleep(2)  # Simulate analysis time
 
-        autofund = AutoFundAI(api_key)
+            # Mock result
+            result = {
+                "nif": task["nif"],
+                "ano_exercicio": task["ano_exercicio"],
+                "designacao_social": task["designacao_social"],
+                "volume_negocios": 1000000.0,
+                "ebitda": 150000.0,
+                "autonomia_financeira": 0.45,
+                "liquidez_geral": 1.8,
+                "margem_ebitda": 0.15,
+                "rating": "MÉDIO",
+                "ficheiros_gerados": {
+                    "excel": f"outputs/mock_{task_id}.xlsx",
+                    "json": f"outputs/mock_{task_id}.json"
+                },
+                "metadata": {
+                    "nif": task["nif"],
+                    "ano_exercicio": task["ano_exercicio"],
+                    "designacao_social": task["designacao_social"],
+                    "email": task["email"],
+                    "data_processamento": datetime.now().isoformat()
+                },
+                "dados_financeiros": {
+                    "volume_negocios": 1000000.0,
+                    "ebitda": 150000.0,
+                    "autonomia_financeira": 0.45,
+                    "liquidez_geral": 1.8,
+                    "margem_ebitda": 0.15
+                },
+                "analise": {
+                    "rating": "MÉDIO",
+                    "recomendacoes": [
+                        "Melhorar a autonomia financeira",
+                        "Aumentar a margem EBITDA"
+                    ]
+                }
+            }
 
-        # Processar
-        task["status"] = "analyzing"
-        result = autofund.process_ies(task["file_path"], task.get("context", ""))
+            # Create mock files
+            os.makedirs("outputs", exist_ok=True)
+            with open(f"outputs/mock_{task_id}.json", "w") as f:
+                json.dump({"status": "completed", "mock": True}, f)
+            # Copy existing template as mock Excel
+            if os.path.exists("template_iapmei.xlsx"):
+                import shutil
+                shutil.copy("template_iapmei.xlsx", f"outputs/mock_{task_id}.xlsx")
+        else:
+            # Inicializar AutoFundAI
+            api_key = os.getenv('ANTHROPIC_API_KEY')
+            if not api_key:
+                raise Exception("API key não configurada")
+
+            autofund = AutoFundAI(api_key)
+
+            # Processar
+            task["status"] = "analyzing"
+            result = autofund.process_ies(task["file_path"], task.get("context", ""))
 
         # Preparar URLs de download
         excel_path = result["ficheiros_gerados"]["excel"]

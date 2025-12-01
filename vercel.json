@@ -1,19 +1,15 @@
 {
-  "version": 2,
-  "name": "aiparati-express",
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/"
-    }
-  ],
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
+  "framework": "nextjs",
   "env": {
-    "NEXT_PUBLIC_API_URL": "@api_url"
-  }
+    "NEXT_PUBLIC_API_URL": "https://aiparati-express-backend.vercel.app"
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://aiparati-express-backend.vercel.app/api/$1"
+    }
+  ]
 }
